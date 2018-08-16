@@ -9,14 +9,17 @@ class MinHook
 		if !init
 			init := this.__MinHook_Load_Unload()
 
-		if !this.hModule := DllCall("LoadLibrary", "str", ModuleName, "ptr")
-			throw "Failed loading module: " ModuleName
+		if !(ModuleName ~= "i)^(User32|Kernel32|ComCtl32|Gdi32)(\.dll)?$")
+		{
+			if !this.hModule := DllCall("LoadLibrary", "str", ModuleName, "ptr")
+				throw "Failed loading module: " ModuleName
+		}
 		if !IsFunc(CallbackFunction)
 			throw "Function <" CallbackFunction "> does not exist."
 
 		this.cbAddr := RegisterCallback(CallbackFunction, "F")
 		if err := MH_CreateHookApiEx(ModuleName, ModuleFunction, this.cbAddr, pOriginal, pTarget)
-			throw MH_StatusToString(err), DllCall("GlobalFree", "ptr", this.cbAddr, "ptr")
+			throw MH_StatusToString(err)
 
 		this.original := pOriginal
 		this.target := pTarget
@@ -25,8 +28,9 @@ class MinHook
 	__Delete()
 	{
 		MH_RemoveHook(this.target)
-		DllCall("FreeLibrary", "Ptr", this.hModule)
 		DllCall("GlobalFree", "ptr", this.cbAddr, "ptr")
+		if this.hModule
+			DllCall("FreeLibrary", "ptr", this.hModule)
 	}
 
 	Enable() {
