@@ -56,16 +56,12 @@ class MinHook
 
 		if _
 		{
-			if FileExist("MinHook.dll")
-				dllFile := "MinHook.dll"
-			else
-				dllFile := (A_PtrSize = 8) ? "MinHook\x64\MinHook.dll" : "MinHook\x32\MinHook.dll"
-
+			if !dllFile := this._findDll()
+				throw "Unable to find MinHook.dll"
 			if !hModule := DllCall("LoadLibrary", "str", dllFile, "ptr")
 				throw "Failed loading " dllFile
 			if err := MH_Initialize()
 				throw MH_StatusToString(err)
-
 			return true
 		}
 
@@ -74,6 +70,15 @@ class MinHook
 			DllCall("MinHook\MH_Uninitialize")
 			DllCall("FreeLibrary", "ptr", hModule)
 		}
+	}
+
+	_findDll()
+	{
+		dirs := { 4: [".", "MinHook\x32", A_LineFile "\..", A_LineFile "\..\MinHook\x32"]
+		        , 8: [".", "MinHook\x64", A_LineFile "\..", A_LineFile "\..\MinHook\x64"] }
+		for i, dir in dirs[A_PtrSize]
+			if FileExist(dir "\MinHook.dll")
+				return dir "\MinHook.dll"
 	}
 }
 
