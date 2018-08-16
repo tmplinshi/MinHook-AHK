@@ -1,4 +1,4 @@
-; v1.0 (2018-8-11)
+; v1.1 (2018-8-16)
 ; AHK version: U32/U64
 
 class MinHook 
@@ -9,8 +9,8 @@ class MinHook
 		if !init
 			init := this.__MinHook_Load_Unload()
 
-		if !DllCall("GetModuleHandle", "str", ModuleName, "ptr")
-			this.hModule := DllCall("LoadLibrary", "str", ModuleName, "ptr")
+		if !this.hModule := DllCall("LoadLibrary", "str", ModuleName, "ptr")
+			throw "Failed loading module: " ModuleName
 		if !IsFunc(CallbackFunction)
 			throw "Function <" CallbackFunction "> does not exist."
 
@@ -24,13 +24,8 @@ class MinHook
 
 	__Delete()
 	{
-		try this.Remove()
-	}
-
-	Remove() {
-		if err := MH_RemoveHook(this.target)
-			throw MH_StatusToString(err)
-
+		MH_RemoveHook(this.target)
+		DllCall("FreeLibrary", "Ptr", this.hModule)
 		DllCall("GlobalFree", "ptr", this.cbAddr, "ptr")
 	}
 
