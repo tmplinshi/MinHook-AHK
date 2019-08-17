@@ -6,7 +6,7 @@ AutoHotkey wrapper for [MinHook](https://github.com/TsudaKageyu/minhook)
    - `ahkDll` folder
    - `sizeof.ahk`, `InjectAhkDll.ahk` and `_Struct.ahk`
    
-- `Example6 - RegisterClass (Memory).ahk` requires the following files by HotkeyIt:
+- `Example6 - Change GUI class name (Memory).ahk` requires the following files by HotkeyIt:
    - `_MemoryLibrary.ahk`, `_Struct.ahk` and `sizeof.ahk`
 
 - You can place `Minhook.dll` in one of the following directories:
