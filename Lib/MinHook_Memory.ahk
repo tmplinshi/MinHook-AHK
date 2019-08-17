@@ -1,7 +1,8 @@
 ﻿; v1.2 (2019-02-11)
 ; AHK version: U32/U64
+#Include <_MemoryLibrary>
 
-class MinHook
+class MinHook_Memory
 {
 	__New(ModuleName, ModuleFunction, CallbackFunction)
 	{
@@ -66,33 +67,50 @@ class MinHook
 	__MinHook_Load_Unload()
 	{
 		static _ := { base: {__Delete: MinHook.__MinHook_Load_Unload} }
-		static hModule
+		static MemLib
 
 		if _
 		{
-			if !dllFile := this._findDll()
-				throw "Unable to find MinHook.dll"
-			if !hModule := DllCall("LoadLibrary", "str", dllFile, "ptr")
+			dllFile := (A_PtrSize=4) ? "MINHOOK\X32\MINHOOK.DLL" : "MINHOOK\X64\MINHOOK.DLL"
+			if !this.ResRead(dllData, dllFile)
 				throw "Failed loading " dllFile
+			MemLib := new _MemoryLibrary(&dllData)
+
+			Loop, Parse, % "MH_Uninitialize|MH_Initialize|MH_Uninitialize|MH_CreateHook|MH_CreateHookApi|MH_CreateHookApiEx|MH_RemoveHook|MH_EnableHook|MH_DisableHook|MH_QueueEnableHook|MH_QueueDisableHook|MH_ApplyQueued|MH_StatusToString", |
+				MinHook_Memory[A_LoopField] := MemLib.GetProcAddress(A_LoopField)
+
 			if err := MH_Initialize()
 				throw MH_StatusToString(err)
 			return true
 		}
 
-		if hModule
+		if MemLib
 		{
-			DllCall("MinHook\MH_Uninitialize")
-			DllCall("FreeLibrary", "ptr", hModule)
+			DllCall(MinHook_Memory.MH_Uninitialize)
+			NewMemLib.Free()
 		}
+		return
+
+		FileInstall, MinHook\x32\MinHook.dll, -
+		FileInstall, MinHook\x64\MinHook.dll, -
 	}
 
-	_findDll()
-	{
-		dirs := { 4: [".", "MinHook\x32", A_LineFile "\..", A_LineFile "\..\MinHook\x32"]
-		        , 8: [".", "MinHook\x64", A_LineFile "\..", A_LineFile "\..\MinHook\x64"] }
-		for i, dir in dirs[A_PtrSize]
-			if FileExist(dir "\MinHook.dll")
-				return dir "\MinHook.dll"
+	; ResRead() By SKAN, from http://www.autohotkey.com/board/topic/57631-crazy-scripting-resource-only-dll-for-dummies-36l-v07/?p=609282
+	ResRead( ByRef Var, Key ) { 
+	  VarSetCapacity( Var, 128 ), VarSetCapacity( Var, 0 )
+	  If ! ( A_IsCompiled ) {
+	    FileGetSize, nSize, %Key%
+	    FileRead, Var, *c %Key%
+	    Return nSize
+	  }
+	 
+	  If hMod := DllCall( "GetModuleHandle", Ptr,0, Ptr )
+	    If hRes := DllCall( "FindResource", Ptr,hMod, Str,Key, UInt,10, Ptr )
+	      If hData := DllCall( "LoadResource", Ptr,hMod, Ptr,hRes, Ptr )
+	        If pData := DllCall( "LockResource", Ptr,hData, Ptr )
+	  Return VarSetCapacity( Var, nSize := DllCall( "SizeofResource", Ptr,hMod, Ptr,hRes ) )
+	      ,  DllCall( "RtlMoveMemory", Str,Var, Ptr,pData, UInt,nSize )
+	Return 0    
 	}
 }
 
@@ -100,13 +118,13 @@ class MinHook
 ; Initialize the MinHook library. You must call this function EXACTLY ONCE
 ; at the beginning of your program.
 MH_Initialize() {
-	return DllCall("MinHook\MH_Initialize")
+	return DllCall(MinHook_Memory.MH_Initialize)
 }
 
 ; Uninitialize the MinHook library. You must call this function EXACTLY
 ; ONCE at the end of your program.
 MH_Uninitialize() {
-	return DllCall("MinHook\MH_Uninitialize")
+	return DllCall(MinHook_Memory.MH_Uninitialize)
 }
 
 ; Creates a Hook for the specified target function, in disabled state.
@@ -119,7 +137,7 @@ MH_Uninitialize() {
 ;                    used to call the original target function.
 ;                    This parameter can be NULL.
 MH_CreateHook(pTarget, pDetour, ByRef ppOriginal := 0) {
-	return DllCall("MinHook\MH_CreateHook"
+	return DllCall(MinHook_Memory.MH_CreateHook
 	               , "ptr", pTarget
 	               , "ptr", pDetour
 	               , "uptr*", ppOriginal )
@@ -137,7 +155,7 @@ MH_CreateHook(pTarget, pDetour, ByRef ppOriginal := 0) {
 ;                    used to call the original target function.
 ;                    This parameter can be NULL.
 MH_CreateHookApi(pszModule, pszProcName, pDetour, ByRef ppOriginal := 0) {
-	return DllCall("MinHook\MH_CreateHookApi"
+	return DllCall(MinHook_Memory.MH_CreateHookApi
 	               , "str", pszModule
 	               , "astr", pszProcName
 	               , "ptr", pDetour
@@ -159,7 +177,7 @@ MH_CreateHookApi(pszModule, pszProcName, pDetour, ByRef ppOriginal := 0) {
 ;                    with other functions.
 ;                    This parameter can be NULL.
 MH_CreateHookApiEx(pszModule, pszProcName, pDetour, ByRef ppOriginal := 0, ByRef ppTarget := 0) {
-	return DllCall("MinHook\MH_CreateHookApiEx"
+	return DllCall(MinHook_Memory.MH_CreateHookApiEx
 	               , "str", pszModule
 	               , "astr", pszProcName
 	               , "ptr", pDetour
@@ -171,7 +189,7 @@ MH_CreateHookApiEx(pszModule, pszProcName, pDetour, ByRef ppOriginal := 0, ByRef
 ; Parameters:
 ;   pTarget [in] A pointer to the target function.
 MH_RemoveHook(pTarget) {
-	return DllCall("MinHook\MH_RemoveHook", "ptr", pTarget)
+	return DllCall(MinHook_Memory.MH_RemoveHook, "ptr", pTarget)
 }
 
 /*
@@ -184,7 +202,7 @@ MH_RemoveHook(pTarget) {
 ;                If this parameter is MH_ALL_HOOKS, all created hooks are
 ;                enabled in one go.
 MH_EnableHook(pTarget := 0) {
-	return DllCall("MinHook\MH_EnableHook", "ptr", pTarget)
+	return DllCall(MinHook_Memory.MH_EnableHook, "ptr", pTarget)
 }
 
 ; Disables an already created hook.
@@ -193,7 +211,7 @@ MH_EnableHook(pTarget := 0) {
 ;                If this parameter is MH_ALL_HOOKS, all created hooks are
 ;                disabled in one go.
 MH_DisableHook(pTarget := 0) {
-	return DllCall("MinHook\MH_DisableHook", "ptr", pTarget)
+	return DllCall(MinHook_Memory.MH_DisableHook, "ptr", pTarget)
 }
 
 ; Queues to enable an already created hook.
@@ -202,7 +220,7 @@ MH_DisableHook(pTarget := 0) {
 ;                If this parameter is MH_ALL_HOOKS, all created hooks are
 ;                queued to be enabled.
 MH_QueueEnableHook(pTarget := 0) {
-	return DllCall("MinHook\MH_QueueEnableHook", "ptr", pTarget)
+	return DllCall(MinHook_Memory.MH_QueueEnableHook, "ptr", pTarget)
 }
 
 ; Queues to disable an already created hook.
@@ -211,15 +229,15 @@ MH_QueueEnableHook(pTarget := 0) {
 ;                If this parameter is MH_ALL_HOOKS, all created hooks are
 ;                queued to be disabled.
 MH_QueueDisableHook(pTarget := 0) {
-	return DllCall("MinHook\MH_QueueDisableHook", "ptr", pTarget)
+	return DllCall(MinHook_Memory.MH_QueueDisableHook, "ptr", pTarget)
 }
 
 ; Applies all queued changes in one go.
 MH_ApplyQueued() {
-	return DllCall("MinHook\MH_ApplyQueued")
+	return DllCall(MinHook_Memory.MH_ApplyQueued)
 }
 
 ; Translates the MH_STATUS to its name as a string.
 MH_StatusToString(status) {
-	return DllCall("MinHook\MH_StatusToString", "int", status, "astr")
+	return DllCall(MinHook_Memory.MH_StatusToString, "int", status, "astr")
 }
