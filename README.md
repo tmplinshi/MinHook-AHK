@@ -14,3 +14,5 @@ AutoHotkey wrapper for [MinHook](https://github.com/TsudaKageyu/minhook)
   - `<WorkingDir>\MinHook\x32`, `<WorkingDir>\MinHook\x64`
   - `<Minhook.ahk Directory>`
   - `<Minhook.ahk Directory>\MinHook\x32`, `<Minhook.ahk Directory>\MinHook\x64`
+
+Forum topic: https://www.autohotkey.com/boards/viewtopic.php?f=6&t=53812
