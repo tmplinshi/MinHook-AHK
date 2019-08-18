@@ -1,4 +1,4 @@
-﻿; v1.2 (2019-02-11)
+﻿; v1.2.1 (2019-08-18)
 ; AHK version: U32/U64
 
 class MinHook
